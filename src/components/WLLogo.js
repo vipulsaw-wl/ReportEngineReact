@@ -2,11 +2,15 @@ import React from 'react';
 import worldlineLogoB64 from '../worldlineLogoB64';
 
 /**
- * Worldline logo component.
+ * Worldline logo.
+ * onDark=true  → white version (teal / dark nav backgrounds)
+ * onDark=false → colour version (white / light backgrounds)
  *
- * onDark=true  → white logo for teal/dark navy backgrounds
- *               Uses: invert(1) brightness(2) to flip the dark pixels white
- * onDark=false → full-colour logo for white/light backgrounds (default)
+ * The source file is a JPEG with white background + red/dark Worldline mark.
+ * For dark backgrounds we use:
+ *   brightness(0) → all pixels → black
+ *   invert(1)     → black → white
+ * This produces a clean white silhouette regardless of original colours.
  */
 export default function WLLogo({ height = 22, onDark = false, style }) {
   const width = Math.round(height * (154 / 34));
@@ -21,11 +25,7 @@ export default function WLLogo({ height = 22, onDark = false, style }) {
         display: 'block',
         objectFit: 'contain',
         flexShrink: 0,
-        // Dark background: invert makes red→cyan which looks wrong,
-        // so we go fully white by using brightness+invert together
-        filter: onDark
-          ? ''   // → pure white silhouette
-          : 'none',                      // → original red/dark colours
+        filter: onDark ? '' : 'none',
         ...style,
       }}
     />

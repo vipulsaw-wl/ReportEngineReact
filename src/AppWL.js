@@ -15,6 +15,8 @@ import DashboardPage    from './pages/DashboardPageWL';
 import UploadPage       from './pages/UploadPage';
 import SchedulePage     from './pages/SchedulePage';
 import ReportsPage      from './pages/ReportsPageWL';
+import EditSchedulePage    from './pages/EditSchedulePage';
+import EditBulkSchedulePage from './pages/EditBulkSchedulePage';
 import HistoryPage      from './pages/HistoryPageWL';
 import SettingsPage     from './pages/SettingsPage';
 import QueryRunnerPage  from './pages/QueryRunnerPage';
@@ -35,6 +37,7 @@ const NAV_ITEMS = [
 ];
 
 const PAGE_TITLES = {
+  // injected dynamically for edit pages — see WLTopBar title logic below
   dashboard:    'Dashboard',
   platforms:    'Platform Registry',
   upload:       'Template Upload',
@@ -52,6 +55,8 @@ export default function AppWL() {
   const [screen,          setScreen]         = useState('loading');
   const [page,            setPage]           = useState('dashboard');
   const [scheduleContext, setScheduleContext] = useState(null);
+  const [editScheduleId,  setEditScheduleId]  = useState(null);
+  const [editBulkId,      setEditBulkId]      = useState(null);
   const [bulkContext,     setBulkContext]     = useState(null);
 
 
@@ -123,7 +128,11 @@ export default function AppWL() {
     }}>
       {/* Top bar */}
       <WLTopBar
-        title={PAGE_TITLES[page]}
+        title={
+          editScheduleId ? 'Edit Scheduled Report' :
+          editBulkId     ? 'Edit Bulk Schedule'    :
+          PAGE_TITLES[page]
+        }
         user={user}
         onLogout={handleLogout}
       />
@@ -133,9 +142,11 @@ export default function AppWL() {
         {/* Sidebar */}
         <WLSidebar
           items={sidebarItems}
-          selected={page}
+          selected={editScheduleId ? 'reports' : editBulkId ? 'bulkschedule' : page}
           onSelect={p => {
             setPage(p);
+            setEditScheduleId(null);   // exit edit mode on nav
+            setEditBulkId(null);
             if (p !== 'schedule') setScheduleContext(null);
             if (p !== 'bulkschedule') setBulkContext(null);
           }}
@@ -148,6 +159,23 @@ export default function AppWL() {
           background: WL.contentBg,
           display: 'flex', flexDirection: 'column',
         }}>
+          {/* ── Full-page edit views — render above main content area ── */}
+          {editScheduleId && (
+            <EditSchedulePage
+              reportId={editScheduleId}
+              onSaved={() => { setEditScheduleId(null); setPage('reports'); }}
+              onCancel={() => { setEditScheduleId(null); setPage('reports'); }}
+            />
+          )}
+          {editBulkId && (
+            <EditBulkSchedulePage
+              scheduleId={editBulkId}
+              onSaved={() => { setEditBulkId(null); setPage('bulkschedule'); }}
+              onCancel={() => { setEditBulkId(null); setPage('bulkschedule'); }}
+            />
+          )}
+          {!editScheduleId && !editBulkId && (
+          <>
           {page === 'dashboard'    && <DashboardPage  setPage={setPage} />}
           {page === 'upload'       && <UploadPage />}
           {page === 'schedule'     && (
@@ -156,9 +184,11 @@ export default function AppWL() {
               onContextConsumed={() => setScheduleContext(null)}
             />
           )}
-          {page === 'reports'      && <ReportsPage />}
+          {page === 'reports'      && <ReportsPage onEditSchedule={id => setEditScheduleId(id)} />}
           {page === 'history'      && <HistoryPage />}
           {page === 'settings'     && <SettingsPage />}
+          </>
+          )}
           {page === 'platforms'    && <PlatformRegPage onBack={() => setPage('dashboard')} />}
           {page === 'queryrun'     && <QueryRunnerPage />}
           {page === 'merchantbank' && (
@@ -168,7 +198,7 @@ export default function AppWL() {
             />
           )}
           {page === 'bulkschedule' && (
-            <BulkSchedulePage
+            <BulkSchedulePage onEditBulkSchedule={id => setEditBulkId(id)}
               bulkContext={bulkContext}
               onContextConsumed={() => setBulkContext(null)}
             />

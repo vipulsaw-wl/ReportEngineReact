@@ -75,146 +75,9 @@ function Sel({ value, onChange, options }) {
   );
 }
 
-// ── Edit Modal ───────────────────────────────────────────────────────────────
-function EditModal({ report, onClose, onSaved }) {
-  const [form, setForm]     = useState({
-    reportName:  report.reportName || '',
-    category:    report.category || 'CUSTOM',
-    frequency:   report.frequency || 'DAILY',
-    runTime:     report.runTime || '07:00',
-    outputFormat:report.outputFormat || 'EXCEL',
-    recipients:  (report.recipients || []).join(', '),
-    sqlQuery:    report.sqlQuery || '',
-    notes:       report.notes || '',
-  });
-  const [saving, setSaving] = useState(false);
-  const [err, setErr]       = useState('');
-
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
-  const handleSave = async () => {
-    if (!form.reportName.trim()) return setErr('Report name is required.');
-    const rcpts = form.recipients.split(',').map(e => e.trim()).filter(Boolean);
-    if (rcpts.some(e => !e.includes('@'))) return setErr('One or more email addresses are invalid.');
-    setSaving(true); setErr('');
-    try {
-      await scheduleApi.update(report.id, {
-        reportName:   form.reportName,
-        category:     form.category,
-        frequency:    form.frequency,
-        runTime:      form.runTime || undefined,
-        outputFormat: form.outputFormat,
-        recipients:   rcpts,
-        sqlQuery:     form.sqlQuery || undefined,
-        notes:        form.notes || undefined,
-      });
-      onSaved();
-      onClose();
-    } catch (e) {
-      setErr(e.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div onClick={onClose}
-      style={{ position: 'fixed', inset: 0, zIndex: 1000,
-               background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(3px)',
-               display: 'flex', alignItems: 'center', justifyContent: 'center',
-               padding: 24 }}>
-      <div onClick={e => e.stopPropagation()}
-        style={{ background: WL.white, borderRadius: 5, width: '100%', maxWidth: 600,
-                 maxHeight: '90vh', overflowY: 'auto',
-                 boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-
-        {/* Header */}
-        <div style={{ padding: '18px 24px', borderBottom: '1px solid ' + WL.border,
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      position: 'sticky', top: 0, background: WL.white, zIndex: 1 }}>
-          <div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: WL.textPrimary,
-                          fontFamily: WF.sans }}>Edit Schedule</div>
-            <div style={{ fontSize: 12, color: WL.textMuted, fontFamily: WF.sans,
-                          marginTop: 2 }}>{report.reportName}</div>
-          </div>
-          <button onClick={onClose}
-            style={{ background: 'none', border: 'none', fontSize: 20,
-                     cursor: 'pointer', color: WL.textMuted, padding: 0 }}>✕</button>
-        </div>
-
-        {/* Form */}
-        <div style={{ padding: '20px 24px' }}>
-          {err && (
-            <div style={{ padding: '10px 14px', background: '#FEF2F2',
-                          border: '1px solid #FECACA', borderRadius: 3,
-                          fontSize: 13, color: '#DC2626', fontFamily: WF.sans,
-                          marginBottom: 16 }}>⚠ {err}</div>
-          )}
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            <div style={{ gridColumn: '1/-1' }}>
-              <Field label="Report Name">
-                <Inp value={form.reportName} onChange={e => set('reportName', e.target.value)}
-                  placeholder="e.g. Daily Transaction Report" />
-              </Field>
-            </div>
-
-            <Field label="Category">
-              <Sel value={form.category} onChange={e => set('category', e.target.value)}
-                options={CATS} />
-            </Field>
-
-            <Field label="Frequency">
-              <Sel value={form.frequency} onChange={e => set('frequency', e.target.value)}
-                options={FREQS} />
-            </Field>
-
-            {form.frequency !== 'ONE_TIME' && form.frequency !== 'CUSTOM_CRON' && (
-              <Field label="Run Time (UTC)">
-                <Inp value={form.runTime} onChange={e => set('runTime', e.target.value)}
-                  type="time" />
-              </Field>
-            )}
-
-            <Field label="Output Format">
-              <Sel value={form.outputFormat} onChange={e => set('outputFormat', e.target.value)}
-                options={FMTS} />
-            </Field>
-          </div>
-
-          <Field label="Recipients (comma-separated)">
-            <Inp value={form.recipients} onChange={e => set('recipients', e.target.value)}
-              placeholder="finance@company.com, reports@company.com  (optional)" />
-          </Field>
-
-          <Field label="SQL Query">
-            <Inp value={form.sqlQuery} onChange={e => set('sqlQuery', e.target.value)}
-              rows={6} placeholder="SELECT ..." />
-          </Field>
-
-          <Field label="Notes (optional)">
-            <Inp value={form.notes} onChange={e => set('notes', e.target.value)}
-              placeholder="Optional notes" />
-          </Field>
-        </div>
-
-        {/* Footer */}
-        <div style={{ padding: '14px 24px', borderTop: '1px solid ' + WL.border,
-                      display: 'flex', justifyContent: 'flex-end', gap: 10,
-                      position: 'sticky', bottom: 0, background: WL.white }}>
-          <Btn onClick={onClose}>Cancel</Btn>
-          <Btn onClick={handleSave} variant="primary" loading={saving}>
-            💾 Save Changes
-          </Btn>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ── Main Page ────────────────────────────────────────────────────────────────
-export default function ReportsPageWL() {
+export default function ReportsPageWL({ onEditSchedule }) {
   const [platforms,   setPlatforms]  = useState([]);
   const [platformId,  setPlatformId] = useState('');
   const [reports,     setReports]    = useState([]);
@@ -222,7 +85,6 @@ export default function ReportsPageWL() {
   const [err,         setErr]        = useState('');
   const [toast,       setToast]      = useState('');
   const [page,        setPage]       = useState(0);
-  const [editTarget,  setEditTarget] = useState(null);
   const [runningId,   setRunningId]  = useState(null);
   const [togglingId,  setTogglingId] = useState(null);
   const [deletingId,  setDeletingId] = useState(null);
@@ -312,6 +174,7 @@ export default function ReportsPageWL() {
     verticalAlign: 'middle',
   };
 
+
   return (
     <div style={{ padding: '20px 24px', fontFamily: WF.sans }}>
 
@@ -357,13 +220,6 @@ export default function ReportsPageWL() {
       )}
 
       {/* Edit modal */}
-      {editTarget && (
-        <EditModal
-          report={editTarget}
-          onClose={() => setEditTarget(null)}
-          onSaved={() => { loadReports(); showToast(`✓ "${editTarget.reportName}" updated.`); }}
-        />
-      )}
 
       {/* Page header */}
       <div style={{ display: 'flex', alignItems: 'center',
@@ -488,7 +344,7 @@ export default function ReportsPageWL() {
                       </Btn>
 
                       {/* Edit */}
-                      <Btn onClick={() => setEditTarget(r)}>
+                      <Btn onClick={() => onEditSchedule && onEditSchedule(r.id)}>
                         ✎ Edit
                       </Btn>
 

@@ -209,6 +209,8 @@ function ScheduleCard({ b, onRun, onPause, onResume, onDelete, onViewStatus, run
   );
 }
 
+const POI_DEFAULT = '__poi_default__';
+
 const DEFAULT_BASE_SQL = `SELECT
   rrn,
   to_char(txndate,'dd-MM-YYYY') as txndate,
@@ -323,7 +325,7 @@ function BulkProcedureBuilder({ value, onChange }) {
   );
 }
 
-export default function BulkSchedulePage({ bulkContext }) {
+export default function BulkSchedulePage({ bulkContext, onEditBulkSchedule }) {
   const [view,       setView]      = useState('list');   // 'list' | 'create'
   const [platforms,  setPlatforms] = useState([]);
   const [platformId, setPid]       = useState('');
